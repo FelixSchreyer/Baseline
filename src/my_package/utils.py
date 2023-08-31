@@ -3,7 +3,7 @@ import pandas as pd
 import requests, zipfile
 from matplotlib import pyplot as plt
 from tsfresh.utilities.dataframe_functions import roll_time_series
-
+from sklearn.preprocessing import MinMaxScaler
 from my_package.add_columns import create_id_column, create_time_column, create_rul_columns
 
 try:
@@ -131,3 +131,14 @@ def roll_data(df, min_timeshift, rolling_direction):
     df['value_RUL'] = df.groupby('id')['RUL'].transform('min')
 
     return df
+
+
+def norm(df):
+    scaler = MinMaxScaler()
+    def normalize_group(group):
+        group['x'] = scaler.fit_transform(group[['x']])
+        group['y'] = scaler.fit_transform(group[['y']])
+        return group
+    normalized_df = df.groupby('id').apply(normalize_group)
+
+    return normalized_df

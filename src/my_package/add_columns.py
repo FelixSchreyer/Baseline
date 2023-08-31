@@ -38,14 +38,15 @@ def create_rul_columns(df):
     min_values = df.groupby('bearing_id')['time'].min()
 
     # Calculate time differences using vectorized operations
-    df_helper['date_time_difference'] = max_values[1] - df['time']
-    df_helper['max_date_time_difference'] = max_values[1] - min_values[1]
+    df['date_time_difference'] = max_values[1] - df['time']
+    df['max_date_time_difference'] = max_values[1] - min_values[1]
 
     # Calculate the result column using vectorized operations
-    df['RUL'] = df_helper['date_time_difference'] / df_helper['max_date_time_difference']
-
-    df['RUL_cat'] = (df['RUL']*5).astype('int')
+    df['RUL'] = df['date_time_difference'] / df['max_date_time_difference']
+    df['RUL_cat'] = pd.Series(pd.cut(df['RUL'], bins=[-float('inf'), 0.1, 0.3, float('inf')],
+                                     labels=[3, 2, 1], right=False))
     return df
+
 
 
 def create_id_column(df, id_value):
