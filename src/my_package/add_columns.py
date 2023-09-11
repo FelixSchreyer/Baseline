@@ -22,7 +22,7 @@ def create_time_column(df):
         'minute': df['minute'],
         'second': df['second'],
         'millisecond': df['millisecond']
-    })
+    }, errors='coerce')
     columns_to_drop = ['hour', 'minute', 'second', 'millisecond']
     df = df.drop(columns=columns_to_drop)
 
@@ -33,7 +33,6 @@ def create_time_column(df):
 
 
 def create_rul_columns(df):
-    df_helper = pd.DataFrame()
     max_values = df.groupby('bearing_id')['time'].max()
     min_values = df.groupby('bearing_id')['time'].min()
 

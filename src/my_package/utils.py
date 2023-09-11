@@ -93,7 +93,7 @@ def create_df(directory, files):
         for filename in os.listdir(csv_directory):
             if filename.endswith('.csv') and filename.startswith("acc"):
                 file_path = os.path.join(csv_directory, filename)
-                df = pd.read_csv(file_path, header=None, skiprows=lambda x: x % 375)
+                df = pd.read_csv(file_path, header=None, encoding_errors='replace', skiprows=lambda x: x % 375)
                 df = create_id_column(df, var_id)
                 dataframes.append(df)
     df = pd.concat(dataframes, ignore_index=True)
@@ -118,6 +118,8 @@ def return_df(dir_ref, data):
     df = df.sort_values(by='time')
     df = df.reset_index(drop=True)
 
+    df = df.fillna(method='ffill')
+
     return df
 
 
@@ -127,8 +129,8 @@ def roll_data(df, min_timeshift, rolling_direction):
     df[['bearing_id', 'time_end']] = df['id'].apply(pd.Series)
     df = create_rul_columns(df)
     df['y'] = df['y'].fillna(method='ffill')
-    df['roll_RUL'] = df.groupby('id')['RUL_cat'].transform('min')
-    df['value_RUL'] = df.groupby('id')['RUL'].transform('min')
+    df['roll_RUL'] = df.groupby('id', as_index=False)['RUL_cat'].transform('min')
+    df['value_RUL'] = df.groupby('id', as_index=False)['RUL'].transform('min')
 
     return df
 
@@ -139,6 +141,6 @@ def norm(df):
         group['x'] = scaler.fit_transform(group[['x']])
         group['y'] = scaler.fit_transform(group[['y']])
         return group
-    normalized_df = df.groupby('id').apply(normalize_group)
+    normalized_df = df.groupby('id', as_index=False).apply(normalize_group)
 
     return normalized_df
