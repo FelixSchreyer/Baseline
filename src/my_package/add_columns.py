@@ -1,5 +1,6 @@
 import datetime
 import pandas as pd
+import dask.dataframe as dd
 
 def create_time_column(df):
     datetime.time()
@@ -14,7 +15,7 @@ def create_time_column(df):
     df.reset_index(drop=True)
 
     # Create a new datetime column
-    df['time'] = pd.to_datetime({
+    df['time'] =pd.to_datetime({
         'year': default_year,
         'month': default_month,
         'day': default_day,
@@ -22,7 +23,7 @@ def create_time_column(df):
         'minute': df['minute'],
         'second': df['second'],
         'millisecond': df['millisecond']
-    }, errors='coerce')
+    }, errors='raise')
     columns_to_drop = ['hour', 'minute', 'second', 'millisecond']
     df = df.drop(columns=columns_to_drop)
 
@@ -42,8 +43,9 @@ def create_rul_columns(df):
 
     # Calculate the result column using vectorized operations
     df['RUL'] = df['date_time_difference'] / df['max_date_time_difference']
-    df['RUL_cat'] = pd.Series(pd.cut(df['RUL'], bins=[-float('inf'), 0.1, 0.3, float('inf')],
+    df['RUL_class'] = pd.Series(pd.cut(df['RUL'], bins=[-float('inf'), 0.1, 0.3, float('inf')],
                                      labels=[3, 2, 1], right=False))
+    df = df.drop(columns=['date_time_difference', 'max_date_time_difference'])
     return df
 
 

@@ -1,5 +1,6 @@
 from random import randint
 import pandas as pd
+import dask.dataframe as dd
 import requests, zipfile
 from matplotlib import pyplot as plt
 from tsfresh.utilities.dataframe_functions import roll_time_series
@@ -93,9 +94,11 @@ def create_df(directory, files):
         for filename in os.listdir(csv_directory):
             if filename.endswith('.csv') and filename.startswith("acc"):
                 file_path = os.path.join(csv_directory, filename)
-                df = pd.read_csv(file_path, header=None, encoding_errors='replace', skiprows=lambda x: x % 375)
+            
+                df = pd.read_csv(file_path, header=None, sep='[;,]', encoding_errors='replace', engine='python')
                 df = create_id_column(df, var_id)
                 dataframes.append(df)
+
     df = pd.concat(dataframes, ignore_index=True)
     return df
 
@@ -126,11 +129,17 @@ def return_df(dir_ref, data):
 def roll_data(df, min_timeshift, rolling_direction):
     df = roll_time_series(df, column_id='id', column_sort="time",
                           min_timeshift=min_timeshift, rolling_direction=rolling_direction)
-    df[['bearing_id', 'time_end']] = df['id'].apply(pd.Series)
+    df = df.assign(bearing_id=df['id'].apply(lambda x: x[0]), time_end=df['id'].apply(lambda x: x[1]))
     df = create_rul_columns(df)
     df['y'] = df['y'].fillna(method='ffill')
-    df['roll_RUL'] = df.groupby('id', as_index=False)['RUL_cat'].transform('min')
-    df['value_RUL'] = df.groupby('id', as_index=False)['RUL'].transform('min')
+
+    rul_dict = df.groupby('id').agg({'RUL_class': 'min', 'RUL': 'min'}).to_dict()
+
+    df['RUL_rolled_class'] = df['id'].apply(lambda x: rul_dict['RUL_class'].get(x))
+    df['RUL_rolled'] = df['id'].apply(lambda x: rul_dict['RUL'].get(x))
+    #df['RUL_rolled_class'] = df.groupby('id')['RUL_class'].transform('min')
+    #df['RUL_rolled'] = df.groupby('id')['RUL'].transform('min')
+    df = df.drop(columns = ['RUL', 'RUL_class'])
 
     return df
 
