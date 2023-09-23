@@ -34,18 +34,35 @@ def create_time_column(df):
 
 
 def create_rul_columns(df):
+    '''
+    Takes a Dataframe and returns it with additional RUL columns.
+
+    Creates column that contains RUL scaled to [0,1] and a column that contains a RUL class.
+
+    :param df: pd.dataframe for which RUL columns shall be created
+    :type df: pandas.DataFrame
+
+    :return:
+    :rtype: pandas.DataFrame
+    '''
+
+    # Get max/min values in time column for each id individually
     max_values = df.groupby('bearing_id')['time'].max()
     min_values = df.groupby('bearing_id')['time'].min()
 
-    # Calculate time differences using vectorized operations
+    # Calculate time differences
     df['date_time_difference'] = max_values[1] - df['time']
     df['max_date_time_difference'] = max_values[1] - min_values[1]
 
-    # Calculate the result column using vectorized operations
+    # Calculate RUL and RUL_class
+    # TODO: Decide on RUL Classes
     df['RUL'] = df['date_time_difference'] / df['max_date_time_difference']
     df['RUL_class'] = pd.Series(pd.cut(df['RUL'], bins=[-float('inf'), 0.1, 0.3, float('inf')],
                                      labels=[3, 2, 1], right=False))
+
+    # Drop columns that are no more needed
     df = df.drop(columns=['date_time_difference', 'max_date_time_difference'])
+
     return df
 
 

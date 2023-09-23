@@ -1,10 +1,12 @@
 from random import randint
+
+import numpy as np
 import pandas as pd
 import dask.dataframe as dd
 import requests, zipfile
 from matplotlib import pyplot as plt
 from tsfresh.utilities.dataframe_functions import roll_time_series
-from sklearn.preprocessing import MinMaxScaler
+from sklearn.preprocessing import MinMaxScaler, RobustScaler, normalize
 from my_package.add_columns import create_id_column, create_time_column, create_rul_columns
 
 try:
@@ -94,8 +96,8 @@ def create_df(directory, files):
         for filename in os.listdir(csv_directory):
             if filename.endswith('.csv') and filename.startswith("acc"):
                 file_path = os.path.join(csv_directory, filename)
-            
-                df = pd.read_csv(file_path, header=None, sep='[;,]', encoding_errors='replace', engine='python')
+
+                df = pd.read_csv(file_path, header=None, sep='[;,]', encoding_errors='strict', engine='python')
                 df = create_id_column(df, var_id)
                 dataframes.append(df)
 
@@ -121,34 +123,70 @@ def return_df(dir_ref, data):
     df = df.sort_values(by='time')
     df = df.reset_index(drop=True)
 
+    #TODO: Only one missing value handling
     df = df.fillna(method='ffill')
 
     return df
 
 
 def roll_data(df, min_timeshift, rolling_direction):
+    '''
+    Function firstly applies tsfresh's roll_time_series to roll the time series.
+    Subsequently, RUL and RUL_Class columns are created.
+
+    :param df: pd.dataframe of arbitrary shape
+    :type df: pandas.DataFrame
+
+    :param min_timeshift: int for tsfresh.roll_time_series()
+    :type min_timeshift: int
+
+    :param rolling_direction: int for tsfresh.roll_time_series()
+    :type rolling_direction: int
+
+    :return: pd.dataframe rolled with RUL columns
+    :rtype : pandas.DataFrame
+    '''
+
+    # Roll Dataframe
     df = roll_time_series(df, column_id='id', column_sort="time",
                           min_timeshift=min_timeshift, rolling_direction=rolling_direction)
-    df = df.assign(bearing_id=df['id'].apply(lambda x: x[0]), time_end=df['id'].apply(lambda x: x[1]))
-    df = create_rul_columns(df)
-    df['y'] = df['y'].fillna(method='ffill')
 
+    distinct_windows = np.unique(df['id'])
+
+    # Split new id column into an id column containing bearing id and time_end column containing the
+    # endpoint of the rolled sequence
+    df = df.assign(bearing_id=df['id'].apply(lambda x: x[0]), time_end=df['id'].apply(lambda x: x[1]))
+
+    # Create RUL columns
+    df = create_rul_columns(df)
+
+    # Fill empty entries in sensor data
+    #df['y'] = df['y'].fillna(method='ffill')
+    #df['x'] = df['x'].fillna(method='ffill')
+
+    # Identify RUL and RUL_Class min values for each id (aka rolled sequence)
     rul_dict = df.groupby('id').agg({'RUL_class': 'min', 'RUL': 'min'}).to_dict()
 
+    # Add Columns that contain RUL values for end of rolled sequence
+    # these are the relevant values for prediction
     df['RUL_rolled_class'] = df['id'].apply(lambda x: rul_dict['RUL_class'].get(x))
     df['RUL_rolled'] = df['id'].apply(lambda x: rul_dict['RUL'].get(x))
+
     #df['RUL_rolled_class'] = df.groupby('id')['RUL_class'].transform('min')
     #df['RUL_rolled'] = df.groupby('id')['RUL'].transform('min')
+
+    # Drop columns that are not needed anymore
     df = df.drop(columns = ['RUL', 'RUL_class'])
 
     return df
 
 
 def norm(df):
-    scaler = MinMaxScaler()
+    minmax_scaler = MinMaxScaler()
+    robust_scaler = RobustScaler()
     def normalize_group(group):
-        group['x'] = scaler.fit_transform(group[['x']])
-        group['y'] = scaler.fit_transform(group[['y']])
+        group[['x', 'y']] = robust_scaler.fit_transform(group[['x', 'y']])
+        #group[['x', 'y']] = minmax_scaler.fit_transform(group[['x', 'y']])
         return group
     normalized_df = df.groupby('id', as_index=False).apply(normalize_group)
 
