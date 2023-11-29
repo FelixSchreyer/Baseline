@@ -38,3 +38,12 @@ Temporary Items
 
 # Data
 data.nosync
+
+notebooks/df_feature_all.pkl
+notebooks/df_feature_selected.pkl
+notebooks/df_feature.pkl
+notebooks/df_s_test_rolled.pkl
+notebooks/df_t_test_rolled.pkl
+notebooks/df_s_train_rolled.pkl
+notebooks/df_t_train_rolled.pkl
+notebooks/df_s_validate_rolled.pkl
