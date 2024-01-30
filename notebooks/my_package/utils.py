@@ -2,6 +2,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 # For Segmentation
 import ruptures as rpt
+import os 
 
 from tsfresh.utilities.dataframe_functions import roll_time_series
 from sklearn.preprocessing import MinMaxScaler, RobustScaler
@@ -34,7 +35,10 @@ def create_df(directory, files):
         # iteratre through all files in folder
         for filename in os.listdir(csv_directory):
             # only csv files that contain acceleration data of relevance
-            if filename.endswith('.csv') and filename.startswith("acc"):
+            # for PRONOSTIA
+            #if filename.endswith('.csv') and filename.startswith("acc"):
+            # for XJTU
+            if filename.endswith('.csv'):
                 file_path = os.path.join(csv_directory, filename)
                 # seperators can be both ',' and ';'
                 df = pd.read_csv(file_path, header=None, sep='[;,]', encoding_errors='strict', engine='python', skiprows=lambda x: x % 2 != 0)
